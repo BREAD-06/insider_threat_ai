@@ -1,48 +1,57 @@
 # train_model.py
-# Trains an Isolation Forest model on the simulated log data.
+# Trains an Isolation Forest on aggregated CERT r4.2 features and saves the model.
 
 import os
+import sys
 import joblib
 import pandas as pd
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import classification_report
 
-FEATURE_COLS = ["hour", "bytes_transferred", "failed_logins"]
-MODEL_PATH = "models/isolation_forest.pkl"
-DATA_PATH = "data/logs.csv"
+# Allow running from the project root
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from agents.monitoring_agent import MonitoringAgent
+from agents.analysis_agent import AnalysisAgent, FEATURE_COLS
+
+MODEL_PATH  = "models/isolation_forest.pkl"
+DATA_DIR    = "data/cert_r4.2"
 
 
-def load_data(path: str = DATA_PATH) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df["hour"] = df["timestamp"].dt.hour
-    return df
+def build_features(data_dir: str = DATA_DIR) -> pd.DataFrame:
+    """Load CERT CSVs and produce the feature table."""
+    raw     = MonitoringAgent(data_dir=data_dir).run()
+    features = AnalysisAgent().run(raw)
+    return features
 
 
 def train(df: pd.DataFrame, contamination: float = 0.05) -> IsolationForest:
     X = df[FEATURE_COLS].fillna(0)
-    model = IsolationForest(contamination=contamination, random_state=42, n_estimators=200)
+    print(f"[train_model] Training on {len(X):,} samples × {len(FEATURE_COLS)} features …")
+    model = IsolationForest(
+        n_estimators=300,
+        contamination=contamination,
+        max_samples="auto",
+        random_state=42,
+        n_jobs=-1,
+    )
     model.fit(X)
     return model
 
 
-def evaluate(model: IsolationForest, df: pd.DataFrame):
-    X = df[FEATURE_COLS].fillna(0)
-    preds = model.predict(X)           # -1 = anomaly, 1 = normal
-    y_pred = (preds == -1).astype(int) # 1 = anomaly
-    y_true = df["label"].values
-    print("[train_model] Classification Report:")
-    print(classification_report(y_true, y_pred, target_names=["normal", "anomaly"]))
-
-
 def main():
     os.makedirs("models", exist_ok=True)
-    df = load_data()
-    print(f"[train_model] Loaded {len(df)} records.")
+    df = build_features()
     model = train(df)
-    evaluate(model, df)
     joblib.dump(model, MODEL_PATH)
     print(f"[train_model] Model saved to '{MODEL_PATH}'.")
+
+    # Quick sanity check
+    from sklearn.ensemble import IsolationForest as IF
+    X = df[FEATURE_COLS].fillna(0)
+    preds = model.predict(X)
+    n_anomalies = int((preds == -1).sum())
+    pct = n_anomalies / len(preds) * 100
+    print(f"[train_model] Flagged {n_anomalies:,} anomalies ({pct:.2f}%) on training set.")
 
 
 if __name__ == "__main__":

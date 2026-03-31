@@ -10,25 +10,25 @@ from agents.learning_agent import LearningAgent
 
 
 def run_pipeline(
-    log_source: str = "data/logs.csv",
+    data_dir: str = "data/cert_r4.2",
     model_path: str = "models/isolation_forest.pkl",
     retrain: bool = False,
 ) -> dict:
-    print("\n=== Insider Threat AI Pipeline ===\n")
+    print("\n=== Insider Threat AI Pipeline (CERT r4.2) ===\n")
 
-    # 1. Collect logs
-    monitor = MonitoringAgent(log_source=log_source)
-    raw_logs = monitor.run()
+    # 1. Load all 5 CERT CSV files
+    monitor = MonitoringAgent(data_dir=data_dir)
+    raw_df = monitor.run()
 
-    # 2. Pre-process & feature engineer
+    # 2. Feature-engineer into per-user-hour table
     analyser = AnalysisAgent()
-    df_features = analyser.run(raw_logs)
+    df_features = analyser.run(raw_df)
 
-    # 3. Detect anomalies
+    # 3. Detect anomalies with Isolation Forest
     detector = DetectionAgent(model_path=model_path)
     df_scored = detector.run(df_features)
 
-    # 4. Verify flagged records with rule-based checks
+    # 4. Verify flagged rows with rule-based checks
     verifier = VerificationAgent()
     df_verified = verifier.run(df_scored)
 
@@ -36,22 +36,24 @@ def run_pipeline(
     responder = ResponseAgent()
     responder.run(df_verified)
 
-    # 6. Optionally retrain model with new data
+    # 6. Optionally retrain model on new data
     if retrain:
         learner = LearningAgent(model_path=model_path)
         learner.run(df_features)
 
+    confirmed = int(df_verified["confirmed_threat"].sum()) if "confirmed_threat" in df_verified.columns else 0
+
     summary = {
-        "total": len(df_features),
-        "anomalies": int(df_scored["is_anomaly"].sum()),
-        "confirmed": int(df_verified.get("confirmed_threat", False).sum()),
+        "total":       len(df_features),
+        "anomalies":   int(df_scored["is_anomaly"].sum()),
+        "confirmed":   confirmed,
         "verified_df": df_verified,
     }
 
     print("\n=== Pipeline Complete ===")
-    print(f"  Total records   : {summary['total']}")
-    print(f"  Anomalies found : {summary['anomalies']}")
-    print(f"  Confirmed threats: {summary['confirmed']}")
+    print(f"  Feature rows     : {summary['total']:,}")
+    print(f"  Anomalies found  : {summary['anomalies']:,}")
+    print(f"  Confirmed threats: {summary['confirmed']:,}")
     return summary
 
 

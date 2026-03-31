@@ -1,8 +1,24 @@
 # detection_agent.py
-# Runs the trained Isolation Forest model to score each log entry.
+# Runs the trained Isolation Forest model to score each per-user-hour feature row.
 
 import joblib
 import pandas as pd
+
+# Must stay in sync with analysis_agent.py FEATURE_COLS and models/train_model.py
+FEATURE_COLS = [
+    "hour",
+    "day_of_week",
+    "is_after_hours",
+    "logon_count",
+    "logoff_count",
+    "usb_connect",
+    "usb_disconnect",
+    "file_count",
+    "http_count",
+    "email_count",
+    "email_size_total",
+    "email_attachments_total",
+]
 
 
 class DetectionAgent:
@@ -17,18 +33,17 @@ class DetectionAgent:
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:
         if self.model is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
-        feature_cols = [c for c in df.columns if c not in ("timestamp", "user", "action")]
-        scores = self.model.decision_function(df[feature_cols])
+        X = df[FEATURE_COLS].fillna(0)
         df = df.copy()
-        df["anomaly_score"] = scores
-        df["is_anomaly"] = self.model.predict(df[feature_cols]) == -1
+        df["anomaly_score"] = self.model.decision_function(X)
+        df["is_anomaly"]    = self.model.predict(X) == -1
         return df
 
     def run(self, df: pd.DataFrame) -> pd.DataFrame:
         self.load_model()
         result = self.predict(df)
-        anomalies = result["is_anomaly"].sum()
-        print(f"[DetectionAgent] {anomalies} anomalies detected out of {len(result)} records.")
+        anomalies = int(result["is_anomaly"].sum())
+        print(f"[DetectionAgent] {anomalies:,} anomalies detected out of {len(result):,} records.")
         return result
 
 

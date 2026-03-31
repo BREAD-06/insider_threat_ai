@@ -1,9 +1,11 @@
 # learning_agent.py
-# Periodically retrains the model with new labelled data to adapt to evolving behaviour.
+# Periodically retrains the model with the latest aggregated feature data.
 
 import joblib
 import pandas as pd
 from sklearn.ensemble import IsolationForest
+
+from agents.analysis_agent import FEATURE_COLS
 
 
 class LearningAgent:
@@ -12,16 +14,21 @@ class LearningAgent:
         model_path: str = "models/isolation_forest.pkl",
         contamination: float = 0.05,
     ):
-        self.model_path = model_path
+        self.model_path    = model_path
         self.contamination = contamination
 
-    def retrain(self, df: pd.DataFrame):
-        feature_cols = [c for c in df.columns if c not in ("timestamp", "user", "action")]
-        X = df[feature_cols].fillna(0)
-        model = IsolationForest(contamination=self.contamination, random_state=42)
+    def retrain(self, df: pd.DataFrame) -> IsolationForest:
+        X = df[FEATURE_COLS].fillna(0)
+        model = IsolationForest(
+            n_estimators=300,
+            contamination=self.contamination,
+            max_samples="auto",
+            random_state=42,
+            n_jobs=-1,
+        )
         model.fit(X)
         joblib.dump(model, self.model_path)
-        print(f"[LearningAgent] Model retrained on {len(X)} samples and saved to {self.model_path}.")
+        print(f"[LearningAgent] Model retrained on {len(X):,} samples and saved to {self.model_path}.")
         return model
 
     def run(self, df: pd.DataFrame):
