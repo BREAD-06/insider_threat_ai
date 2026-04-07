@@ -10,8 +10,9 @@ from agents.learning_agent import LearningAgent
 
 
 def run_pipeline(
-    data_dir: str = "data/cert_r4.2",
+    data_dir: str = "data/r4.2-1",
     model_path: str = "models/isolation_forest.pkl",
+    score_percentile: float | None = 20.0,
     retrain: bool = False,
 ) -> dict:
     print("\n=== Insider Threat AI Pipeline (CERT r4.2) ===\n")
@@ -25,7 +26,7 @@ def run_pipeline(
     df_features = analyser.run(raw_df)
 
     # 3. Detect anomalies with Isolation Forest
-    detector = DetectionAgent(model_path=model_path)
+    detector = DetectionAgent(model_path=model_path, score_percentile=score_percentile)
     df_scored = detector.run(df_features)
 
     # 4. Verify flagged rows with rule-based checks

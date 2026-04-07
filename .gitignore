@@ -23,6 +23,9 @@ data/cert_r4.2/
 # ── Generated / runtime files ─────────────────────────────────────────────────
 data/alerts.jsonl
 data/logs.csv
+data/test_results.csv
+data/test_scenarios/
+data/r4.2-1/
 
 # ── Trained model weights (large binary) ──────────────────────────────────────
 models/isolation_forest.pkl
