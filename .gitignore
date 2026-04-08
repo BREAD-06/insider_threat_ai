@@ -1,0 +1,37 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# ── CERT r4.2 dataset (too large for GitHub — 13+ GB) ─────────────────────────
+data/cert_r4.2/
+# Place the 5 CSVs here after downloading from Kaggle:
+#   data/cert_r4.2/logon.csv
+#   data/cert_r4.2/device.csv
+#   data/cert_r4.2/file.csv
+#   data/cert_r4.2/http.csv      (13.8 GB)
+#   data/cert_r4.2/email.csv
+
+# ── Generated / runtime files ─────────────────────────────────────────────────
+data/alerts.jsonl
+data/logs.csv
+data/test_results.csv
+data/test_scenarios/
+data/r4.2-1/
+
+# ── Trained model weights (large binary) ──────────────────────────────────────
+models/isolation_forest.pkl
+
+# ── IDE & OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
